@@ -1,0 +1,52 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\begin{document}
+\begin{titlepage}
+	\setlength{\parindent}{0pt}
+	\large
+
+\vspace*{-2cm}
+
+University of Waterloo \par
+Econ 424 \par
+\vspace{0.05cm}
+Null: 2023-09-12
+\vspace{0.2cm}
+
+{\huge Prediction Competition \# 1 \par}
+\hrule
+
+\vspace{1cm}
+\textbf{Q2)} To determine how much Jimmys expected lifetime will increase, we need to detetermine the difference between his expected income with 12 years of education ($\hat \theta_{12}$) and his expected income with 13 years of education ($\hat \theta_{13}$). In other words, this can be expressed as: \par
+\[ \text{ Expected lifetime income change } = \hat \theta_{13} - \hat \theta_{12} \]
+By visual observation, we can arrive at $\theta_{12} \approx 133000$ and $\theta_{13} \approx 148000$, plugging this back in gives:
+\begin{align*} 
+\text{ Expected lifetime income change } &= 148000 - 133000 \\
+&=  15000
+\end{align*}
+So we would expected the expected lifetime income of Jimmy to increase by 15000 if he had another year of education. \par
+
+\vspace{0.7cm}
+
+\textbf{Q3)} Let X = \{$x_1, x_2, .... x_{100}$\}, were $x_i$ represents the expected income of individual point i on the graph. Therefore the average income of the economy can be represented as:
+\begin{align*} 
+\text{ Average expected income } &= \frac{\sum^{100}_{i=1}x_i}{100} \\
+&=  164900
+\end{align*}
+If everyone had 17 years of income ($\hat \theta_{17}$) then we would expect that the average lifetime income to be:
+\begin{align*} 
+\text{ Average expected income } &= \frac{\sum^{100}_{i=1}\hat \theta_{17} }{100} \\
+&=  213000
+\end{align*}
+Therfore we would expected that the average lifetime income would increase by 48100 if everyone had 17 years of education. \par
+
+\vspace{0.7cm}
+
+\textbf{Q4)} For the first question, ChatGPT recommends using a linear interpolation to estimate the values of each point. To do this we would find the two closest points and draw a line between then, then on the x axis we would draw a line from the given amount of education and where it interesects with our linear interpolation would be our estimate for the value.\\\\
+For the second question, since we dont have access to the data points ChatGPT recommends getting a point estimate for the new position at 13 years of education and finding the difference to the point estimate for 12 years of age. \\\\
+Lastly ChatGPT recommends to count up all the points of the graph to calculate the average lifetime income, it then recommends finding a point estimate for income at 17 years of education and then caluclating the difference. 
+
+
+\end{titlepage}
+\end{document}
