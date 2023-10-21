@@ -141,7 +141,7 @@ neigh.fit(X_Train, Y_Train)
 X_Test = pd.read_csv("Econ_424_F2023_PC3_test_without_response_variable.csv", low_memory=False)
 X_Test.drop(columns=["city", "state", "make"], inplace=True)
 
-def castModel(value ):
+def castModel(value):
     if value == "mkxpremiere":
         return ModelWeights["mkxmkx"]
     if "s70" in value:

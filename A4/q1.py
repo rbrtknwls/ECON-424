@@ -2,7 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+import warnings
 
+warnings.filterwarnings("ignore")
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 
@@ -18,11 +20,12 @@ data = pd.read_csv('inter.csv')
 data = data.loc[:, data.columns.intersection(['price', 'mileage', 'model_name', 'year'])]
 data["price"] = data["price"].map(lambda x: np.log(x))
 data["mileage"] = data["mileage"].map(lambda x: np.log(int(x) + 1))
-
+data, test = train_test_split(data, test_size=0.998)
 
 # ===================== Data Processing =====================
 # Get a count of the number of models
 modelDictCount = {}
+
 
 def classify(model):
     if model not in modelDictCount:
@@ -33,25 +36,66 @@ def classify(model):
 
 data.apply(lambda x: classify(x['model_name']), axis=1)
 
-# Now we want to classify the models into groups,
+# Now we want to classify the models into groups
 modelToGroup = {}
 numberOfGroups = 1
 
 for x in modelDictCount:
-    # If we have more than 7 cars make a new grouping.
-    if modelDictCount[x] > 7:
+    # We want at least 20 observations per variate, so we will make sure each group has 40 samples
+    if modelDictCount[x] > 40:
         modelToGroup[x] = numberOfGroups
         numberOfGroups += 1
+
     else:
         modelToGroup[x] = 0
 
+data["model_name"] = data["model_name"].map(lambda x: modelToGroup[x])
 # We are now going to train XGBoost on each group
-print(modelToGroup)
 
+modelPerGroup = {}
 
 print(numberOfGroups)
+for idx in range(0, numberOfGroups + 1):
+    modelDataFrame = data[data['model_name'] == idx]
+    x = modelDataFrame.iloc[:, 1:]
+    y = modelDataFrame.iloc[:, 0]
+    model = xgb.XGBRegressor(n_estimators=500, max_depth=7, eta=0.1, subsample=0.7, colsample_bytree=0.8)
+    model.fit(x, y)
+    modelPerGroup[idx] = model
+    if idx % 100 == 0:
+        print(idx)
+
+
+def getModelName(modelName):
+    if modelName in modelToGroup:
+        return modelToGroup[modelName]
+    return 0
+
+
+# ===================== Data Testing =====================
+
+def getMSE(row):
+    test_y = row[0]
+    test_x = row[1:]
+    test_x['model_name'] = getModelName(test_x['model_name'])
+    pred_y = modelPerGroup[test_x['model_name']].predict(np.array([test_x]))
+
+    print(pred_y, test_y)
+
+
+test.apply(getMSE, axis=1)
 '''
-data["model_name"] = data["model_name"].map(lambda x: modelDict[x])
+for index, row in test.iterrows():
+    test_y = row[0]
+    test_x = row[1:]
+    test_x['model_name'] = getModelName(test_x['model_name'])
+    print(test_x)
+    print(test_x.model_name.dtypes)
+    pred_y = modelPerGroup[test_x['model_name']].predict(test_x)
+
+    print(pred_y, test_y)
+'''
+'''
 
 dataFramePerModel = {}
 for model in range(0, len(makeDict)):
