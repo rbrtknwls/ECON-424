@@ -23,6 +23,7 @@ data.dropna(inplace=True)
 data["price"] = data["price"].map(lambda x: np.log(x))
 data["mileage"] = data["mileage"].map(lambda x: np.log(int(x) + 1))
 
+data = data[data["price"] > np.log(40000)]
 # ===================== Data Processing =====================
 # assign each value to a dict
 modelDict = {}
@@ -40,7 +41,7 @@ data["model_name"] = data["model_name"].map(lambda x: modelDict[x])
 #  range we will use the bucket estimate instead of the overall estimator.
 data.sort_values(by=['price'], inplace=True, ignore_index=True)
 
-numberOfBuckets = 11
+numberOfBuckets = 5
 numberOfEntries = len(data)
 markers = [data.iloc[0, 0]]
 adjustment = np.abs((data.iloc[0, 0] - data.iloc[numberOfEntries - 1, 0]) / 14)
@@ -80,7 +81,7 @@ def getModelName(modelName):
 
 
 # Read in the test data and modify the data
-test = pd.read_csv("Econ424_F2023_PC4_test_data_without_response_var.csv", low_memory=False)
+test = pd.read_csv("Econ424_F2023_PC5_test_data_without_response_var.csv", low_memory=False)
 test["owner_count"] = test["owner_count"].fillna(0)
 test = test.interpolate()
 test = test.loc[:,test.columns.intersection(['model_name', 'mileage', 'daysonmarket', 'owner_count', 'year'])]
@@ -100,7 +101,6 @@ test['New_ID'] = test.index
 pred = {}
 # Using the old predictions, use the buckets to predict again
 for bucket in range(0, numberOfBuckets):
-    print(bucket)
     if bucket == numberOfBuckets - 1:
         slice = test[test['predicted_base_price'] > markers[bucket]]
     elif bucket == 0:
@@ -126,6 +126,8 @@ for bucket in range(0, numberOfBuckets):
 test["predicted_spec_price"] = test.apply(lambda x: pred[x.loc['New_ID']], axis=1)
 val = test["predicted_spec_price"]
 
+print(np.log(40000))
+print(len(data))
 f = open('predictions.csv', 'w')
 for estimate in val:
     f.writelines(str(estimate) + ",\n")
