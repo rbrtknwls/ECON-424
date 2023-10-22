@@ -3,169 +3,129 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 import warnings
+from pandas.util import hash_pandas_object
 
 warnings.filterwarnings("ignore")
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 
 # Read in the data
-'''
 data = pd.read_csv("Econ424_F2023_PC4_training_data_large.csv", low_memory=False)
-data = data.loc[:, data.columns.intersection(['price', 'make_name', 'mileage', 'model_name', 'year'])]
-data.dropna(inplace=True)
-'''
-data = pd.read_csv('inter.csv')
 
-# Keep only the most relevant
-data = data.loc[:, data.columns.intersection(['price', 'mileage', 'model_name', 'year'])]
+# Keep only the most relevant stats
+data = data.loc[:,
+       data.columns.intersection(['price', 'model_name', 'mileage', 'daysonmarket', 'owner_count', 'year'])]
+# If owner_count is empty assume its 0
+data["owner_count"] = data["owner_count"].fillna(0)
+# Drop empty columns
+data.dropna(inplace=True)
+# Standardize results
 data["price"] = data["price"].map(lambda x: np.log(x))
 data["mileage"] = data["mileage"].map(lambda x: np.log(int(x) + 1))
-data, test = train_test_split(data, test_size=0.998)
 
 # ===================== Data Processing =====================
-# Get a count of the number of models
-modelDictCount = {}
+# assign each value to a dict
+modelDict = {}
 
 
 def classify(model):
-    if model not in modelDictCount:
-        modelDictCount[model] = 0
-
-    modelDictCount[model] = 1 + modelDictCount[model]
+    if model not in modelDict:
+        modelDict[model] = len(modelDict)
 
 
 data.apply(lambda x: classify(x['model_name']), axis=1)
+data["model_name"] = data["model_name"].map(lambda x: modelDict[x])
 
-# Now we want to classify the models into groups
-modelToGroup = {}
-numberOfGroups = 1
+# We will now define 3 buckets dependent on the price of the car, such that if we estimate a car to be in a specific
+#  range we will use the bucket estimate instead of the overall estimator.
+data.sort_values(by=['price'], inplace=True, ignore_index=True)
 
-for x in modelDictCount:
-    # We want at least 20 observations per variate, so we will make sure each group has 40 samples
-    if modelDictCount[x] > 40:
-        modelToGroup[x] = numberOfGroups
-        numberOfGroups += 1
-
+numberOfBuckets = 11
+numberOfEntries = len(data)
+markers = [data.iloc[0, 0]]
+adjustment = np.abs((data.iloc[0, 0] - data.iloc[numberOfEntries - 1, 0]) / 14)
+for i in range(1, numberOfBuckets + 1):
+    if i == numberOfBuckets:
+        markers.append(data.iloc[numberOfEntries - 1, 0])
     else:
-        modelToGroup[x] = 0
+        markers.append(data.iloc[int(i * numberOfEntries / numberOfBuckets), 0])
 
-data["model_name"] = data["model_name"].map(lambda x: modelToGroup[x])
-# We are now going to train XGBoost on each group
+# We will then train classifiers with data a little past each marker
+modelArr = []
+for bucket in range(0, numberOfBuckets):
+    if bucket == numberOfBuckets - 1:
+        slice = data[(data['price'] > markers[bucket] - adjustment) & (data['price'] <= markers[bucket + 1])]
+    elif bucket == 0:
+        slice = data[(data['price'] >= markers[bucket]) & (data['price'] <= markers[bucket + 1] + adjustment)]
+    else:
+        slice = data[
+            (data['price'] > markers[bucket] - adjustment) & (
+                    data['price'] <= markers[bucket + 1] + adjustment)]
 
-modelPerGroup = {}
+    innerModel = xgb.XGBRegressor(n_estimators=500, max_depth=4, eta=0.1, subsample=0.7, colsample_bytree=0.8)
+    x = slice.iloc[:, 1:]
+    y = slice.iloc[:, 0]
+    innerModel.fit(x, y)
+    modelArr.append(innerModel)
 
-print(numberOfGroups)
-for idx in range(0, numberOfGroups + 1):
-    modelDataFrame = data[data['model_name'] == idx]
-    x = modelDataFrame.iloc[:, 1:]
-    y = modelDataFrame.iloc[:, 0]
-    model = xgb.XGBRegressor(n_estimators=500, max_depth=7, eta=0.1, subsample=0.7, colsample_bytree=0.8)
-    model.fit(x, y)
-    modelPerGroup[idx] = model
-    if idx % 100 == 0:
-        print(idx)
-
-
-def getModelName(modelName):
-    if modelName in modelToGroup:
-        return modelToGroup[modelName]
-    return 0
+print(markers)
 
 
 # ===================== Data Testing =====================
 
-def getMSE(row):
-    test_y = row[0]
-    test_x = row[1:]
-    test_x['model_name'] = getModelName(test_x['model_name'])
-    pred_y = modelPerGroup[test_x['model_name']].predict(np.array([test_x]))
-
-    print(pred_y, test_y)
+def getModelName(modelName):
+    if modelName in modelDict:
+        return modelDict[modelName]
+    return 0
 
 
-test.apply(getMSE, axis=1)
-'''
-for index, row in test.iterrows():
-    test_y = row[0]
-    test_x = row[1:]
-    test_x['model_name'] = getModelName(test_x['model_name'])
-    print(test_x)
-    print(test_x.model_name.dtypes)
-    pred_y = modelPerGroup[test_x['model_name']].predict(test_x)
+# Read in the test data and modify the data
+test = pd.read_csv("Econ424_F2023_PC4_test_data_without_response_var.csv", low_memory=False)
+test["owner_count"] = test["owner_count"].fillna(0)
+test = test.interpolate()
+test = test.loc[:,test.columns.intersection(['model_name', 'mileage', 'daysonmarket', 'owner_count', 'year'])]
+test["model_name"] = test["model_name"].map(lambda x: getModelName(x))
+test["mileage"] = test["mileage"].map(lambda x: np.log(int(x) + 1))
 
-    print(pred_y, test_y)
-'''
-'''
+# Start by predicting using a regular classifier, based of results use a more specific classifier
+baseLine = xgb.XGBRegressor(n_estimators=500, max_depth=4, eta=0.1, subsample=0.7, colsample_bytree=0.8)
+x = data.iloc[:, 1:]
+y = data.iloc[:, 0]
+baseLine.fit(x, y)
+prediction_base = baseLine.predict(test)
+test["predicted_base_price"] = prediction_base
+test['New_ID'] = test.index
 
-dataFramePerModel = {}
-for model in range(0, len(makeDict)):
-    modelDataFrame = data[data['model_name'] == modelDict[list(modelDict.keys())[model]]]
-    print(len(modelDataFrame))
-    dataFramePerModel[model] = modelDataFrame
 
-'''
-'''
-model = xgb.XGBRegressor(n_estimators=1000, max_depth=7, eta=0.1, subsample=0.7, colsample_bytree=0.8)
+pred = {}
+# Using the old predictions, use the buckets to predict again
+for bucket in range(0, numberOfBuckets):
+    print(bucket)
+    if bucket == numberOfBuckets - 1:
+        slice = test[test['predicted_base_price'] > markers[bucket]]
+    elif bucket == 0:
+        slice = test[test['predicted_base_price'] <= markers[bucket + 1]]
+    else:
+        slice = test[
+            (test['predicted_base_price'] > markers[bucket]) & (
+                    test['predicted_base_price'] <= markers[bucket + 1])]
 
-model.fit(trainingParams, trainingResponse)
-estimate = model.predict(trainingParams)
+    slice.reset_index()
+    loctest = slice.iloc[:, 0:-2]
+    loctest.reset_index()
+    predicted = modelArr[bucket].predict(loctest)
 
-MSE = 0
-for x in range(0, len(estimate)):
-    MSE += (estimate[x] - trainingResponse.iloc[x])**2
+    for idx in range(0, len(predicted)):
+        key = slice.iloc[idx, -1]
+        pred[key] = predicted[idx]
 
-print(MSE)
-print(len(estimate))
 
-plt.plot(trainingParams["mileage"], estimate, 'b.', label="Training Error")
-plt.plot(trainingParams["mileage"], trainingResponse, 'r.', label="Training Error")
-plt.show()
-'''
 
-'''
-X_Train = [0] * 10
-Y_Train = [0] * 10
-X_Test = [0] * 10
-Y_Test = [0] * 10
+# ===================== Export Model =====================
 
-for i in range(0, 10):
-    train, test = train_test_split(data, test_size=0.1)
+test["predicted_spec_price"] = test.apply(lambda x: pred[x.loc['New_ID']], axis=1)
+val = test["predicted_spec_price"]
 
-    Y_Train[i] = train.iloc[:, 0]
-    X_Train[i] = train.iloc[:, 1:]
-
-    Y_Test[i] = test.iloc[:, 0]
-    X_Test[i] = test.iloc[:, 1:]
-
-neigh = KNeighborsClassifier(n_neighbors=19)
-
-MSE = []
-for i in range(0, 10):
-    neigh.fit(X_Train[i], Y_Train[i])
-    predict = neigh.predict(X_Test[i])
-
-    for idx in range(0, len(predict)):
-
-        if predict[idx] == 0:
-            if (Y_Test[i].iloc[idx] == 0):
-                predicted0Actual0 += 1
-            else:
-                predicted0Actual1 += 1
-        else:
-            if (Y_Test[i].iloc[idx] == 0):
-                predicted1Actual0 += 1
-            else:
-                predicted1Actual1 += 1
-
-        # Calculations for Total Error
-        if predict[idx] != Y_Test[i].iloc[idx]:
-            absError += 1
-        else:
-            absCorrect += 1
-
-print("Predicted:      0          1")
-print("Actual [0]    " + str(predicted0Actual0) + "    " + str(
-   predicted1Actual0))
-print("Actual [1]    " + str(predicted0Actual1) + "   " + str(
-    predicted1Actual1))
-'''
+f = open('predictions.csv', 'w')
+for estimate in val:
+    f.writelines(str(estimate) + ",\n")
