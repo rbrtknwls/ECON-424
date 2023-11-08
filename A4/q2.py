@@ -22,6 +22,7 @@ data.dropna(inplace=True)
 # Standardize results
 data["price"] = data["price"].map(lambda x: np.log(x))
 data["mileage"] = data["mileage"].map(lambda x: np.log(int(x) + 1))
+print(len(data))
 
 # ===================== Data Processing =====================
 # assign each value to a dict
@@ -67,7 +68,7 @@ y = data.iloc[:, 0]
 baseLine.fit(x, y)
 prediction_base = baseLine.predict(x)
 
-
+MSEList = []
 MSE = 0
 # Using the old predictions, use the buckets to predict again
 for bucket in range(0, numberOfBuckets):
@@ -91,17 +92,17 @@ for bucket in range(0, numberOfBuckets):
         localMSE += (slice.iloc[idx, 0] - predicted[idx])**2
     localMSE = localMSE/len(predicted)
     MSE += localMSE
+    MSEList.append(localMSE)
 
 MSE = MSE/numberOfBuckets
 print(MSE)
 print(MSE/y.var())
-'''
-bar_labels = ["1st Quartile", "2nd Quartile", "3rd Quartile", "4th Quartile", "5th Quartile"]
+
+bar_labels = ["1st Quantile", "2nd Quantile", "3rd Quantile", "4th Quantile", "5th Quantile"]
 bar_colors = ['brown', 'blue', 'green', 'purple', 'orange']
 
-plt.bar(["1st Quartile", "2nd Quartile", "3rd Quartile", "4th Quartile", "5th Quartile"], MSEList, label=bar_labels, color=bar_colors)
+plt.bar(["1st Quantile", "2nd Quantile", "3rd Quantile", "4th Quantile", "5th Quantile"], MSEList, label=bar_labels, color=bar_colors)
 plt.ylabel('MSE for Predicted Price vs Actual Price (log)')
 plt.title('MSE for Predicted Prices Across Price Quartile')
 plt.legend(title='Price Quartile')
 plt.show()
-'''

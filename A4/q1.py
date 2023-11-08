@@ -12,13 +12,9 @@ from sklearn.neighbors import KNeighborsClassifier
 # Read in the data
 data = pd.read_csv("Econ424_F2023_PC4_training_data_large.csv", low_memory=False)
 
-# Keep only the most relevant stats
-data = data.loc[:,
-       data.columns.intersection(['price', 'model_name', 'mileage', 'daysonmarket', 'owner_count', 'year'])]
+
 # If owner_count is empty assume its 0
 data["owner_count"] = data["owner_count"].fillna(0)
-# Drop empty columns
-data.dropna(inplace=True)
 # Standardize results
 data["price"] = data["price"].map(lambda x: np.log(x))
 data["mileage"] = data["mileage"].map(lambda x: np.log(int(x) + 1))
