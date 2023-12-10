@@ -176,7 +176,7 @@ updatedPrediction = []
 for i in range(0, len(predictions)):
     updatedPrediction.append(np.argmax(predictions[i]))
 
-f = open('predictions.csv', 'w')
-for estimate in updatedPrediction:
-    f.writelines(str(estimate+1) + ",\n")
-print(updatedPrediction)
+testingSet = pd.read_csv("oops.csv")
+
+for x in testingSet:
+    print(x)

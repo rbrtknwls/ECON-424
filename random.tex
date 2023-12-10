@@ -1,0 +1,45 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{blkarray}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{dcolumn}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes,arrows}
+\newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{M}[1]{D{.}{.}{1.#1}}
+\captionsetup[sub]{}
+
+\begin{document}
+Let p be the probability that player 1 picks T.
+\begin{align*}
+\pi_2(L) &= 1*p + 2(1-p) \\
+&= p + 2 - 2p \\
+&= 2 - 1p \\\\
+\pi_2(R) &= 2*p + 1(1-p) \\
+&= 2p + 1 -p \\
+&= 1 + p \\\\
+\end{align*}
+Setting them equal gives:
+\[ p = \frac{1}{2} \]
+Let q be the probability that player 2 picks L.
+\begin{align*}
+\pi_1(T) &= 0*q + (1-q)*0 \\
+&= 0 \\\\
+\pi_1(B) &= 2*q + 0*q \\
+&= q
+\end{align*}
+Setting them equal gives:
+\[ q = 0? \]
+
+
+
+\end{document}
